@@ -1,0 +1,1 @@
+pyinstaller --onefile --windowed --name="SQLite数据库合并工具" --add-data="config.ini;." ui_merge_db.py

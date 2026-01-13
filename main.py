@@ -1,15 +1,20 @@
 import configparser
 import sqlite3
 import shutil
+import traceback
 
 from log import logger
 from tool import get_path
 
 
-def merge_databases(db1_path, db2_path):
+def merge_databases(db1_path: str, db2_path: str, table_name: str,
+                    eliminate_columns: list = None):
     """
-    将db2中RealTime表的数据（排除ID列）合并到db1中
+    将db2中指定的表的数据（排除ID列）合并到db1中
     """
+    if eliminate_columns is None:
+        # eliminate_columns = ['ID']
+        eliminate_columns = []
     try:
         # 连接到第一个数据库
         conn1 = sqlite3.connect(db1_path)
@@ -24,7 +29,7 @@ def merge_databases(db1_path, db2_path):
         columns_info = cursor1.fetchall()
 
         # 提取列名（排除ID列）
-        column_names = [col[1] for col in columns_info if col[1].upper() != 'ID']
+        column_names = [col[1] for col in columns_info if col[1] not in eliminate_columns]
 
         if not column_names:
             logger.info("错误：未找到除ID之外的列")
@@ -95,7 +100,7 @@ def rename_with_shutil(src_path, dst_path):
 def get_config():
     config = configparser.ConfigParser()
     config.read(get_path(), encoding="utf-8")
-    return config.get('merge_db', 'src_db'), config.get('merge_db', 'dst_db')
+    return config.get('merge_db', 'dst_db'), config.get('merge_db', 'src_db')
 
 
 if __name__ == "__main__":
@@ -109,7 +114,7 @@ if __name__ == "__main__":
         backup_file(db2)
 
         # 合并数据库
-        if merge_databases(db1, db2):
+        if merge_databases(db1, db2, table_name='RealTime', eliminate_columns=['ID']):
             logger.info("数据库合并完成！")
         else:
             err_msg = "数据库合并失败，已保留备份文件"
@@ -118,5 +123,4 @@ if __name__ == "__main__":
 
         rename_with_shutil(db1, db2)
     except Exception as e:
-        import traceback
         logger.error(traceback.format_exc())
